@@ -1,0 +1,8 @@
+{
+  "name": "Sistema de Agiota",
+  "description": "Sistema inteligente para organizar empréstimos, calcular juros de devedores, gerenciar vencimentos e gerar mensagens de cobrança hilárias ou profissionais com IA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
