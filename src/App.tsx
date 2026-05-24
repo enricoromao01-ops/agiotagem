@@ -99,6 +99,8 @@ export default function App() {
   const [newClientLoanDate, setNewClientLoanDate] = useState("");
   const [newClientDueDate, setNewClientDueDate] = useState("");
   const [newClientNotes, setNewClientNotes] = useState("");
+  const [newClientIsSettled, setNewClientIsSettled] = useState(false);
+  const [newClientPaidInterestOnly, setNewClientPaidInterestOnly] = useState(false);
 
   // Create a new loan record (opens modal prefilled with sensible defaults)
   const handleAddNewLoan = () => {
@@ -112,6 +114,8 @@ export default function App() {
     const defaultDue = new Date(new Date(currentDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setNewClientDueDate(defaultDue);
     setNewClientNotes("");
+    setNewClientIsSettled(false);
+    setNewClientPaidInterestOnly(false);
     setIsCreateModalOpen(true);
   };
 
@@ -140,6 +144,8 @@ export default function App() {
       manualAdjustment: 0,
       amountPaid: 0,
       notes: newClientNotes.trim() || "Nenhuma observação cadastrada.",
+      isSettled: newClientIsSettled,
+      paidInterestOnly: newClientPaidInterestOnly,
     };
 
     setLoans(prev => [newRecord, ...prev]);
@@ -870,6 +876,78 @@ export default function App() {
                 </div>
               </div>
 
+              {/* STATUS DE QUITAÇÃO (SE A PESSOA PAGOU OU NÃO, OU SÓ OS JUROS) */}
+              <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800/80">
+                <div className="flex items-center justify-between mb-2.5 pb-1 border-b border-zinc-900">
+                  <span className="text-[10px] text-emerald-400 uppercase font-mono tracking-widest font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Status de Quitação / Pagou?
+                  </span>
+                  <span className="text-[9px] text-zinc-500 font-mono">Controle rápido de pagamentos</span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCurrentLoanField("isSettled", false);
+                      updateCurrentLoanField("paidInterestOnly", false);
+                      triggerNotification(`Registro de "${currentLoan.name}" definido como pendente em aberto.`, "info");
+                    }}
+                    className={`py-2 px-1 rounded text-[10px] font-bold uppercase tracking-tight cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                      !currentLoan.isSettled && !currentLoan.paidInterestOnly
+                        ? "bg-red-950/45 text-red-500 border-red-900/40 shadow-sm font-black"
+                        : "bg-zinc-900/80 text-zinc-500 border-zinc-850 hover:text-zinc-400 hover:border-zinc-805"
+                    }`}
+                  >
+                    <span className="text-xs">❌</span>
+                    <span>Em Aberto</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCurrentLoanField("isSettled", false);
+                      updateCurrentLoanField("paidInterestOnly", true);
+                      triggerNotification(`Registro de "${currentLoan.name}" marcado como: Pagou apenas os Juros 💸`, "success");
+                    }}
+                    className={`py-2 px-1 rounded text-[10px] font-bold uppercase tracking-tight cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                      !currentLoan.isSettled && currentLoan.paidInterestOnly
+                        ? "bg-amber-950/50 text-amber-400 border-amber-900/50 shadow-sm font-black"
+                        : "bg-zinc-900/80 text-zinc-500 border-zinc-850 hover:text-zinc-400 hover:border-zinc-805"
+                    }`}
+                  >
+                    <span className="text-xs">💸</span>
+                    <span>Só Juros</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCurrentLoanField("isSettled", true);
+                      updateCurrentLoanField("paidInterestOnly", false);
+                      triggerNotification(`Parabéns! Registro de "${currentLoan.name}" marcado como Totalmente Pago 🎉`, "success");
+                    }}
+                    className={`py-2 px-1 rounded text-[10px] font-bold uppercase tracking-tight cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                      currentLoan.isSettled
+                        ? "bg-emerald-950/55 text-emerald-400 border-emerald-900/50 shadow-sm font-black"
+                        : "bg-zinc-900/80 text-zinc-500 border-zinc-850 hover:text-zinc-400 hover:border-zinc-805"
+                    }`}
+                  >
+                    <span className="text-xs">✓</span>
+                    <span>Quitado</span>
+                  </button>
+                </div>
+                
+                <p className="text-[9px] text-zinc-400 font-sans mt-2.5 italic text-left leading-snug">
+                  {currentLoan.isSettled 
+                    ? "✓ O sistema zerou o saldo devedor e os juros acumulados deste devedor no livro de caixa." 
+                    : currentLoan.paidInterestOnly 
+                    ? "💸 O devedor quitou apenas a taxa de juros acumulada. O valor principal do empréstimo continua ativo e pendente."
+                    : "⚠️ O devedor acumula juros normativos pela modalidade escolhida acima."}
+                </p>
+              </div>
+
               {/* VERY IMPORTANT SPACE: ALTERAÇÃO MANUAL (Modificadores Adicionais) */}
               <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800/80">
                 <div className="flex items-center justify-between mb-2 pb-1 border-b border-zinc-900">
@@ -1270,6 +1348,57 @@ export default function App() {
                           onChange={e => setNewClientDueDate(e.target.value)}
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Initial Status of Loan */}
+                  <div>
+                    <label className="text-[9px] text-zinc-400 uppercase font-bold tracking-wider mb-1.5 block">Situação Inicial do Registro</label>
+                    <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewClientIsSettled(false);
+                          setNewClientPaidInterestOnly(false);
+                        }}
+                        className={`py-1.5 px-1 rounded text-[9px] font-bold uppercase cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                          !newClientIsSettled && !newClientPaidInterestOnly
+                            ? "bg-red-950/45 text-red-500 border-red-900/40 font-black font-sans"
+                            : "bg-zinc-950 text-zinc-500 border-zinc-855 hover:text-zinc-400"
+                        }`}
+                      >
+                        <span>❌ Aberto</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewClientIsSettled(false);
+                          setNewClientPaidInterestOnly(true);
+                        }}
+                        className={`py-1.5 px-1 rounded text-[9px] font-bold uppercase cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                          !newClientIsSettled && newClientPaidInterestOnly
+                            ? "bg-amber-950/50 text-amber-400 border-amber-900/50 font-black font-sans"
+                            : "bg-zinc-950 text-zinc-500 border-zinc-855 hover:text-zinc-400"
+                        }`}
+                      >
+                        <span>💸 Só Juros</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewClientIsSettled(true);
+                          setNewClientPaidInterestOnly(false);
+                        }}
+                        className={`py-1.5 px-1 rounded text-[9px] font-bold uppercase cursor-pointer transition-all border flex flex-col items-center justify-center gap-1 leading-tight ${
+                          newClientIsSettled
+                            ? "bg-emerald-950/55 text-emerald-400 border-emerald-900/50 font-black font-sans"
+                            : "bg-zinc-950 text-zinc-500 border-zinc-855 hover:text-zinc-400"
+                        }`}
+                      >
+                        <span>✓ Quitado</span>
+                      </button>
                     </div>
                   </div>
 

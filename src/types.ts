@@ -13,6 +13,8 @@ export interface BorrowerLoan {
   amountPaid: number;       // Valor já abatido/pago
   notes: string;          // Observações (desculpas/promessas)
   riskOverride?: string;  // Nível de risco customizado
+  isSettled?: boolean;    // Marcar se pagou ou não (Quitado/Pendente)
+  paidInterestOnly?: boolean; // Marcar como pago apenas os juros do devedor
 }
 
 export interface CalculatedLoanDetails {

@@ -59,20 +59,35 @@ export function calculateLoanDetails(loan: BorrowerLoan, currentDateStr: string)
   // Clean interest to avoid negatives
   calculatedInterest = Math.max(0, calculatedInterest);
   
+  if (loan.paidInterestOnly) {
+    calculatedInterest = 0;
+  }
+  
   const totalWithInterest = amount + calculatedInterest;
-  const finalDebt = Math.max(0, totalWithInterest + manual - paid);
+  let finalDebt = Math.max(0, totalWithInterest + manual - paid);
+  
+  if (loan.isSettled) {
+    finalDebt = 0;
+  }
   
   // Overdue math
   const daysOverdue = calculateDaysBetween(loan.dueDate, currentDateStr);
-  const isOverdue = finalDebt > 0 && daysOverdue > 0;
+  let isOverdue = finalDebt > 0 && daysOverdue > 0;
+  
+  if (loan.paidInterestOnly) {
+    isOverdue = false;
+  }
   
   // Risk and Status categorization in Portuguese with a cool humor tone
   let statusLabel = "Ativo (Em Dia)";
   let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
   
-  if (finalDebt <= 0) {
+  if (finalDebt <= 0 || loan.isSettled) {
     statusLabel = "Quitado 🎉";
     statusColor = "bg-green-600/20 text-green-300 border-green-500/30";
+  } else if (loan.paidInterestOnly) {
+    statusLabel = "Em Dia (Juros Pago 💸)";
+    statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
   } else if (isOverdue) {
     if (daysOverdue <= 7) {
       statusLabel = `Atrasado: ${daysOverdue} d (Visita Amistosa)`;
@@ -107,6 +122,9 @@ export function calculateLoanDetails(loan: BorrowerLoan, currentDateStr: string)
   if (finalDebt === 0) {
     statusLabel = "Quitado 🎉";
     statusColor = "bg-green-600/20 text-green-300 border-green-500/30";
+  } else if (loan.paidInterestOnly) {
+    statusLabel = "Em Dia (Juros Pago 💸)";
+    statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
   }
 
   // Calculate planned loan duration in whole calendar months to avoid fractional decimal division errors
@@ -143,7 +161,10 @@ export function calculateLoanDetails(loan: BorrowerLoan, currentDateStr: string)
   }
 
   // Outstanding interest today, incorporating payments
-  const outstandingInterest = Math.max(0, calculatedInterest - paid);
+  let outstandingInterest = Math.max(0, calculatedInterest - paid);
+  if (loan.isSettled || loan.paidInterestOnly) {
+    outstandingInterest = 0;
+  }
   
   return {
     elapsedDays: Math.round(daysElapsed),
